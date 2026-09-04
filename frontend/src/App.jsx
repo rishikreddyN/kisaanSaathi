@@ -6,6 +6,7 @@ import OfficerLoginPage from './pages/OfficerLoginPage';
 import AeoDashboard from './pages/AeoDashboard';
 import CommunityPage from './pages/CommunityPage';
 import MyIssuesPage from './pages/MyIssuesPage';
+import PlanMyCropPage from './pages/PlanMyCropPage';
 import LanguageSelector from './components/LanguageSelector';
 import AuthModal from './components/AuthModal';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -157,6 +158,12 @@ function MainLayout() {
               >
                 👥 Community
               </NavLink>
+              <NavLink
+                to="/plan-my-crop"
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              >
+                🌱 Plan My Crop
+              </NavLink>
               <Link
                 to="/report"
                 className="nav-link nav-link-highlight"
@@ -227,6 +234,7 @@ function MainLayout() {
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/my-issues" element={<MyIssuesPage />} />
           <Route path="/community/problems/:problemId" element={<CommunityPage />} />
+          <Route path="/plan-my-crop" element={<PlanMyCropPage />} />
           <Route path="/officer-login" element={<OfficerLoginPage />} />
           <Route path="/aeo" element={<AeoDashboard />} />
           <Route path="/dashboard" element={<AeoDashboard />} />
