@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, Link } from 'react-router-dom';
+import { Routes, Route, NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import FarmerPage from './pages/FarmerPage';
 import OfficerLoginPage from './pages/OfficerLoginPage';
@@ -12,6 +12,10 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext';
 
 function MainLayout() {
   const { t } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isAeoRoute = location.pathname.startsWith('/aeo') || location.pathname.startsWith('/dashboard');
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authSession, setAuthSession] = useState(() => {
@@ -53,6 +57,7 @@ function MainLayout() {
     localStorage.removeItem('aeo_officer_session');
     window.dispatchEvent(new Event('kisaansathi_auth_changed'));
     syncAuth();
+    navigate('/officer-login');
   };
 
   return (
@@ -60,86 +65,158 @@ function MainLayout() {
       {/* Universal Login Modal */}
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
-      {/* Navigation Bar */}
-      <header className="navbar">
-        <div className="navbar-left">
-          <Link to="/" className="navbar-brand">
-            <span className="brand-logo">🌱</span>
-            <span className="brand-name">{t.appName || 'KisaanSathi'}</span>
-          </Link>
-
-          <nav className="nav-links">
-            <NavLink
-              to="/my-issues"
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              📋 My Issues
-            </NavLink>
-            <NavLink
-              to="/community"
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              👥 Community
-            </NavLink>
-            <Link
-              to="/report"
-              className="nav-link nav-link-highlight"
-            >
-              Report a Problem
-            </Link>
-          </nav>
-        </div>
-
-        <div className="navbar-right">
-          {/* Multi-language Selector */}
-          <LanguageSelector />
-
-          {authSession.farmer?.name ? (
-            <div className="navbar-user-group" data-testid="navbar-farmer-group">
-              <Link to="/my-issues" className="navbar-user-chip" title="View my issues">
-                <span className="navbar-user-avatar">
-                  {(authSession.farmer.name || 'F').charAt(0).toUpperCase()}
+      {/* Navigation Bar: If on AEO Workspace, show ONLY dedicated AEO header with Logout */}
+      {isAeoRoute ? (
+        <header
+          className="navbar aeo-navbar"
+          style={{
+            backgroundColor: '#0f172a',
+            color: '#ffffff',
+            padding: '14px 28px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid #1e293b',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: '1.5rem' }}>🏛️</span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontWeight: '800', fontSize: '1.05rem', color: '#ffffff', letterSpacing: '-0.01em' }}>
+                  KisaanSaathi
                 </span>
-                <span className="navbar-user-name">{authSession.farmer.name}</span>
-              </Link>
-              <button
-                type="button"
-                className="btn btn-sm btn-navbar-logout"
-                onClick={handleFarmerLogout}
-                title="Logout from farmer account"
-                data-testid="navbar-logout-btn"
-              >
-                Logout
-              </button>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    color: '#86efac',
+                    backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                    border: '1px solid rgba(134, 239, 172, 0.3)',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                  }}
+                >
+                  AEO Workspace
+                </span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                Officer: {authSession.officer?.name || 'Srinivas Rao'} ({authSession.officer?.officer_id || 'AEO001'}) &bull; Department of Agriculture
+              </div>
             </div>
-          ) : authSession.officer?.officer_id ? (
-            <div className="navbar-user-group" data-testid="navbar-officer-group">
-              <Link to="/aeo" className="navbar-user-chip navbar-officer-chip" title="Officer dashboard">
-                <span className="navbar-user-avatar">🏛️</span>
-                <span className="navbar-user-name">{authSession.officer.officer_id}</span>
-              </Link>
-              <button
-                type="button"
-                className="btn btn-sm btn-navbar-logout"
-                onClick={handleOfficerLogout}
-                title="Logout from officer session"
-                data-testid="navbar-logout-btn"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               type="button"
-              className="btn btn-navbar-login"
-              onClick={() => setIsAuthModalOpen(true)}
-              data-testid="navbar-login-btn"
+              className="btn btn-sm btn-navbar-logout"
+              onClick={handleOfficerLogout}
+              data-testid="navbar-logout-btn"
+              style={{
+                backgroundColor: '#dc2626',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 20px',
+                fontWeight: '700',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.35)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#b91c1c')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#dc2626')}
             >
-              Login
+              <span>🚪</span> Logout
             </button>
-          )}
-        </div>
-      </header>
+          </div>
+        </header>
+      ) : (
+        /* Regular Farmer Navigation Bar */
+        <header className="navbar">
+          <div className="navbar-left">
+            <Link to="/" className="navbar-brand">
+              <span className="brand-logo">🌱</span>
+              <span className="brand-name">{t.appName || 'KisaanSathi'}</span>
+            </Link>
+
+            <nav className="nav-links">
+              <NavLink
+                to="/my-issues"
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              >
+                📋 My Issues
+              </NavLink>
+              <NavLink
+                to="/community"
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              >
+                👥 Community
+              </NavLink>
+              <Link
+                to="/report"
+                className="nav-link nav-link-highlight"
+              >
+                Report a Problem
+              </Link>
+            </nav>
+          </div>
+
+          <div className="navbar-right">
+            {/* Multi-language Selector */}
+            <LanguageSelector />
+
+            {authSession.farmer?.name ? (
+              <div className="navbar-user-group" data-testid="navbar-farmer-group">
+                <Link to="/my-issues" className="navbar-user-chip" title="View my issues">
+                  <span className="navbar-user-avatar">
+                    {(authSession.farmer.name || 'F').charAt(0).toUpperCase()}
+                  </span>
+                  <span className="navbar-user-name">{authSession.farmer.name}</span>
+                </Link>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-navbar-logout"
+                  onClick={handleFarmerLogout}
+                  title="Logout from farmer account"
+                  data-testid="navbar-logout-btn"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : authSession.officer?.officer_id ? (
+              <div className="navbar-user-group" data-testid="navbar-officer-group">
+                <Link to="/aeo" className="navbar-user-chip navbar-officer-chip" title="Officer dashboard">
+                  <span className="navbar-user-avatar">🏛️</span>
+                  <span className="navbar-user-name">{authSession.officer.officer_id}</span>
+                </Link>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-navbar-logout"
+                  onClick={handleOfficerLogout}
+                  title="Logout from officer session"
+                  data-testid="navbar-logout-btn"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-navbar-login"
+                onClick={() => setIsAuthModalOpen(true)}
+                data-testid="navbar-login-btn"
+              >
+                Login
+              </button>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Main Content */}
       <main className="main-content">
@@ -156,24 +233,26 @@ function MainLayout() {
         </Routes>
       </main>
 
-      {/* Footer */}
-      <footer className="footer">
-        <div className="footer-content">
-          <div className="footer-brand">
-            <span className="brand-logo">🌱</span>
-            <strong>{t.appName || 'KisaanSathi'}</strong>
-            <span className="footer-tagline">&mdash; {t.footerTitle}</span>
+      {/* Footer (hidden on AEO workspace) */}
+      {!isAeoRoute && (
+        <footer className="footer">
+          <div className="footer-content">
+            <div className="footer-brand">
+              <span className="brand-logo">🌱</span>
+              <strong>{t.appName || 'KisaanSathi'}</strong>
+              <span className="footer-tagline">&mdash; {t.footerTitle}</span>
+            </div>
+            <p className="footer-subtext">
+              {t.footerSubtext}
+            </p>
+            <div className="footer-links">
+              <Link to="/">{t.navHome}</Link>
+              <Link to="/report">{t.navReport}</Link>
+              <Link to="/officer-login">{t.navOfficerLogin}</Link>
+            </div>
           </div>
-          <p className="footer-subtext">
-            {t.footerSubtext}
-          </p>
-          <div className="footer-links">
-            <Link to="/">{t.navHome}</Link>
-            <Link to="/report">{t.navReport}</Link>
-            <Link to="/officer-login">{t.navOfficerLogin}</Link>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

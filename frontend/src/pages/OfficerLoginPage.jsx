@@ -55,6 +55,9 @@ export default function OfficerLoginPage() {
       authenticated_at: new Date().toISOString(),
     };
     localStorage.setItem('aeo_officer_session', JSON.stringify(sessionData));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('kisaansathi_auth_changed'));
+    }
     navigate('/aeo');
   };
 
