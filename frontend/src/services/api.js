@@ -371,6 +371,7 @@ export async function getNearbyCommunityIncidents({
   radiusKm = 3.0,
   crop = null,
   currentIncidentId = null,
+  excludePhone = null,
   limit = 20,
 }) {
   try {
@@ -382,6 +383,7 @@ export async function getNearbyCommunityIncidents({
     });
     if (crop) params.append('crop', crop);
     if (currentIncidentId) params.append('current_incident_id', currentIncidentId);
+    if (excludePhone) params.append('exclude_phone', excludePhone);
 
     const res = await fetch(`${API_BASE_URL}/api/v1/incidents/nearby?${params.toString()}`);
     if (!res.ok) {

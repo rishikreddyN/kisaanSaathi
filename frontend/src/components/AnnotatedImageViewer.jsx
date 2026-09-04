@@ -545,25 +545,74 @@ export default function AnnotatedImageViewer({
           {/* 1. YOLO11 Detections List */}
           {detections.length > 0 && (
             <div className="viewer-detections-list" data-testid="detections-list">
-              <h5 className="detections-list-title" style={{ color: '#f87171' }}>
-                🔴 Computer Vision Detections (YOLO11) &bull; Photo {activePhotoIdx + 1} ({detections.length}):
-              </h5>
-              <div className="detection-items-grid">
-                {detections.map((det, idx) => (
-                  <div key={`item-${idx}`} className="detection-item-card" data-testid={`detection-item-${idx}`}>
-                    <div className="item-badge-row">
-                      <span className="item-label-chip">🔍 {formatDiseaseLabel(det.label)}</span>
-                      <span className="item-confidence-tag">
-                        AI visual indication: {(Number(det.confidence) * 100).toFixed(1)}%
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                <h5 className="detections-list-title" style={{ color: '#f87171', margin: 0 }}>
+                  🔴 Computer Vision Detections (YOLO11) &bull; Photo {activePhotoIdx + 1} ({detections.length})
+                </h5>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {(() => {
+                    const groups = {};
+                    detections.forEach((d) => {
+                      const name = formatDiseaseLabel(d.label);
+                      if (!groups[name]) groups[name] = { name, count: 0, maxConf: 0 };
+                      groups[name].count += 1;
+                      const conf = Number(d.confidence) || 0;
+                      if (conf > groups[name].maxConf) groups[name].maxConf = conf;
+                    });
+                    return Object.values(groups).map((g, gi) => (
+                      <span
+                        key={`g-badge-${gi}`}
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          background: '#334155',
+                          color: '#f8fafc',
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          border: '1px solid #475569',
+                        }}
+                      >
+                        {g.name}: {g.count} {g.count > 1 ? 'lesions' : 'lesion'} (peak {(g.maxConf * 100).toFixed(1)}%)
                       </span>
+                    ));
+                  })()}
+                </div>
+              </div>
+              <div
+                className="detection-items-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                  gap: '8px',
+                  maxHeight: detections.length > 4 ? '260px' : 'auto',
+                  overflowY: detections.length > 4 ? 'auto' : 'visible',
+                  paddingRight: detections.length > 4 ? '4px' : '0',
+                }}
+              >
+                {detections.map((det, idx) => {
+                  let bboxStr = null;
+                  if (Array.isArray(det.bbox)) {
+                    bboxStr = `[${det.bbox.map((v) => Math.round(v)).join(', ')}] px`;
+                  } else if (det.bbox && typeof det.bbox === 'object') {
+                    bboxStr = `[${Math.round(det.bbox.x1 ?? 0)}, ${Math.round(det.bbox.y1 ?? 0)}] to [${Math.round(det.bbox.x2 ?? 0)}, ${Math.round(det.bbox.y2 ?? 0)}] px`;
+                  }
+
+                  return (
+                    <div key={`item-${idx}`} className="detection-item-card" data-testid={`detection-item-${idx}`}>
+                      <div className="item-badge-row">
+                        <span className="item-label-chip">🔍 {formatDiseaseLabel(det.label)}</span>
+                        <span className="item-confidence-tag">
+                          AI visual indication: {(Number(det.confidence) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      {bboxStr && (
+                        <span className="item-bbox-meta" style={{ color: '#64748b', fontSize: '0.725rem', marginTop: '2px', display: 'block' }}>
+                          Focal Region: {bboxStr}
+                        </span>
+                      )}
                     </div>
-                    {det.bbox && (
-                      <span className="item-bbox-meta" style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
-                        Pixel Bounds: [{det.bbox.x1}, {det.bbox.y1}] to [{det.bbox.x2}, {det.bbox.y2}] px
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
