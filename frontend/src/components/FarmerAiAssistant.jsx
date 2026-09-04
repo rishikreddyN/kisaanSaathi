@@ -8,6 +8,7 @@ import {
   getSimilarIssues,
   confirmSimilarIssues,
 } from '../services/api';
+import { createCommunityPost } from '../services/communityDataStore';
 
 /**
  * Helper to speak text in the farmer's selected language using browser SpeechSynthesis
@@ -82,6 +83,7 @@ export default function FarmerAiAssistant({ farmer, onSwitchFarmer }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
   const [submissionSuccess, setSubmissionSuccess] = useState(null);
+  const [sharedToCommunityPost, setSharedToCommunityPost] = useState(null);
 
   // Similar Issues Check state
   const [similarIssues, setSimilarIssues] = useState([]);
@@ -906,6 +908,60 @@ export default function FarmerAiAssistant({ farmer, onSwitchFarmer }) {
               <p style={{ margin: 0, fontSize: '0.875rem' }}>{submissionSuccess.farmer_notice}</p>
             </div>
           )}
+
+          {/* Section 3.2: Share Submitted Problem to Community Card */}
+          <div className="share-to-community-panel" data-testid="share-to-community-panel">
+            <div className="share-community-text">
+              <span className="community-share-icon">👥</span>
+              <div>
+                <strong>Share this problem with Farmer Community?</strong>
+                <p>
+                  Help fellow farmers in your area identify this issue early and discover solutions that worked.
+                </p>
+              </div>
+            </div>
+
+            {!sharedToCommunityPost ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-share-community-action"
+                onClick={() => {
+                  const post = createCommunityPost({
+                    crop: submissionSuccess.crop || farmer?.crop || 'Agriculture Crop',
+                    title: `${submissionSuccess.crop || farmer?.crop || 'Crop'} Field Problem #${referenceId}`,
+                    content: transcript || 'Agricultural field issue reported for official investigation.',
+                    contentTe: transcript || 'వ్యవసాయ క్షేత్ర సమస్య అధికారిక పరిశీలన కోసం సమర్పించబడింది.',
+                    contentHi: transcript || 'कृषि क्षेत्र की समस्या आधिकारिक जांच हेतु दर्ज की गई।',
+                    contentEn: transcript || 'Agricultural field issue reported for official investigation.',
+                    originalLanguage: currentLang === 'hi' ? 'hi' : currentLang === 'en' ? 'en' : 'te',
+                    location: 'Ghatkesar Mandal (~2.5 km away)',
+                    severity: 'High',
+                    photoUrl: photos?.[0] || 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=600&q=80',
+                    hasVoice: Boolean(audioBlob),
+                    voiceDuration: '0:22',
+                    isSubmittedProblem: true,
+                    relatedIncidentRef: referenceId,
+                    author: {
+                      name: farmer?.name || 'Farmer',
+                      village: 'Ghatkesar Mandal',
+                      district: 'Medchal–Malkajgiri',
+                    },
+                  });
+                  setSharedToCommunityPost(post);
+                }}
+                data-testid="share-to-community-btn"
+              >
+                <span>📤 Share to Community</span>
+              </button>
+            ) : (
+              <div className="shared-community-feedback">
+                <span className="badge-shared-success">✓ Shared to Community Feed!</span>
+                <Link to="/community" className="btn btn-sm btn-outline-view-post">
+                  View in Community →
+                </Link>
+              </div>
+            )}
+          </div>
 
           <div className="success-action-buttons">
             <button
