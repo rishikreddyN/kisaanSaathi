@@ -52,7 +52,7 @@ Thumbs.db
 # Machine Learning Models & Caches (IndicConformer weights)
 .cache/
 hf_cache/
-models/
+/models/
 *.pt
 *.pth
 *.bin

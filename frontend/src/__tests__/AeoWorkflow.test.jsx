@@ -208,6 +208,10 @@ describe('Phase: AEO Officer Workflow Tests', () => {
       );
       expect(screen.getByTestId('action-success-banner')).toBeDefined();
       expect(screen.getByText(/marked as REJECTED/i)).toBeDefined();
+      // Inspector should close (AEO no longer sees the farmer in the inspector)
+      expect(screen.queryByTestId('reject-incident-btn')).toBeNull();
+      // The rejected incident should not appear in the active complaint queue
+      expect(screen.queryByTestId('view-details-btn-inc-001-aaaa')).toBeNull();
     });
   });
 
