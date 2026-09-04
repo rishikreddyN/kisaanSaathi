@@ -12,8 +12,10 @@ export default function ClusterDetailModal({
 }) {
   if (!cluster) return null;
 
-  // Find all incidents that belong to this cluster
+  // Find all incidents that belong to this cluster (strictly excluding rejected issues)
   const relatedIncidents = allIncidents.filter((inc) => {
+    const isRej = inc.status === 'REJECTED' || Boolean(inc.rejection_reason) || Boolean(inc.ai_analysis?.[0]?.structured_data?.rejection);
+    if (isRej) return false;
     if (cluster.incident_ids && cluster.incident_ids.includes(inc.id)) {
       return true;
     }
@@ -35,7 +37,7 @@ export default function ClusterDetailModal({
                 Agricultural Cluster Overview &bull; {cluster.area || 'Telangana Zone'}
               </h3>
               <span className="cluster-modal-sub">
-                {cluster.incident_count || relatedIncidents.length} related farmer reports in this concentration
+                {relatedIncidents.length} related farmer reports in this concentration
               </span>
             </div>
           </div>
