@@ -22,6 +22,7 @@ function MainLayout() {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(() => getUnreadNotificationsCount());
   const [authSession, setAuthSession] = useState(() => {
     try {
@@ -189,60 +190,299 @@ function MainLayout() {
             </nav>
           </div>
 
-          <div className="navbar-right">
-            {/* Global Farmer Notifications Bell */}
+          <div className="navbar-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* 1. Notifications: Symbol only with badge, uncluttered */}
             <button
               type="button"
-              className="btn btn-navbar-notifications"
+              className="btn-navbar-bell-circle"
               onClick={() => setIsNotifDrawerOpen(true)}
-              title="Agricultural alerts, AEO advisories, and community updates"
+              title="Notifications & Advisories"
               data-testid="navbar-notifications-btn"
+              style={{
+                position: 'relative',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.15rem',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e2e8f0')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
             >
-              <span className="notif-bell-icon">🔔</span>
-              <span className="notif-label-text">Notifications</span>
+              <span>🔔</span>
               {unreadCount > 0 && (
-                <span className="notif-unread-badge" data-testid="navbar-notif-badge">
+                <span
+                  className="notif-unread-badge"
+                  data-testid="navbar-notif-badge"
+                  style={{
+                    position: 'absolute',
+                    top: '-3px',
+                    right: '-3px',
+                    backgroundColor: '#dc2626',
+                    color: '#ffffff',
+                    fontSize: '0.675rem',
+                    fontWeight: '800',
+                    minWidth: '17px',
+                    height: '17px',
+                    borderRadius: '9px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px',
+                    boxShadow: '0 2px 5px rgba(220, 38, 38, 0.4)',
+                  }}
+                >
                   {unreadCount}
                 </span>
               )}
             </button>
 
-            {/* Multi-language Selector */}
+            {/* 2. Multi-language Selector */}
             <LanguageSelector />
 
+            {/* 3. User Avatar Profile (Single letter only, click reveals dropdown with logout) */}
             {authSession.farmer?.name ? (
-              <div className="navbar-user-group" data-testid="navbar-farmer-group">
-                <Link to="/my-issues" className="navbar-user-chip" title="View my issues">
-                  <span className="navbar-user-avatar">
-                    {(authSession.farmer.name || 'F').charAt(0).toUpperCase()}
-                  </span>
-                  <span className="navbar-user-name">{authSession.farmer.name}</span>
-                </Link>
+              <div className="navbar-user-dropdown-wrap" style={{ position: 'relative' }} data-testid="navbar-farmer-group">
                 <button
                   type="button"
-                  className="btn btn-sm btn-navbar-logout"
-                  onClick={handleFarmerLogout}
-                  title="Logout from farmer account"
-                  data-testid="navbar-logout-btn"
+                  className="navbar-avatar-only-btn"
+                  onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                  title={`Signed in as ${authSession.farmer.name} (Click for options)`}
+                  data-testid="navbar-avatar-btn"
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    backgroundColor: '#15803d',
+                    color: '#ffffff',
+                    border: '2px solid #86efac',
+                    fontWeight: '800',
+                    fontSize: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(21, 128, 61, 0.25)',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                 >
-                  Logout
+                  {(authSession.farmer.name || 'F').charAt(0).toUpperCase()}
                 </button>
+
+                {isProfileMenuOpen && (
+                  <>
+                    <div
+                      className="dropdown-transparent-overlay"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                      style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                    />
+                    <div
+                      className="navbar-profile-popover"
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 'calc(100% + 8px)',
+                        width: '210px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06)',
+                        border: '1px solid #e2e8f0',
+                        zIndex: 100,
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                      }}
+                    >
+                      <div style={{ paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div
+                          style={{
+                            fontSize: '0.9rem',
+                            fontWeight: '800',
+                            color: '#0f172a',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {authSession.farmer.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                          🌾 Registered Farmer
+                        </div>
+                      </div>
+
+                      <Link
+                        to="/my-issues"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: '600',
+                          color: '#334155',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          textDecoration: 'none',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <span>📋</span> My Issues
+                      </Link>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-navbar-logout"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          handleFarmerLogout();
+                        }}
+                        title="Logout from farmer account"
+                        data-testid="navbar-logout-btn"
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          backgroundColor: '#fef2f2',
+                          color: '#dc2626',
+                          border: '1px solid #fecaca',
+                          borderRadius: '8px',
+                          fontWeight: '700',
+                          fontSize: '0.825rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          marginTop: '4px',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fee2e2')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fef2f2')}
+                      >
+                        <span>🚪</span> Logout
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : authSession.officer?.officer_id ? (
-              <div className="navbar-user-group" data-testid="navbar-officer-group">
-                <Link to="/aeo" className="navbar-user-chip navbar-officer-chip" title="Officer dashboard">
-                  <span className="navbar-user-avatar">🏛️</span>
-                  <span className="navbar-user-name">{authSession.officer.officer_id}</span>
-                </Link>
+              <div className="navbar-user-dropdown-wrap" style={{ position: 'relative' }} data-testid="navbar-officer-group">
                 <button
                   type="button"
-                  className="btn btn-sm btn-navbar-logout"
-                  onClick={handleOfficerLogout}
-                  title="Logout from officer session"
-                  data-testid="navbar-logout-btn"
+                  className="navbar-avatar-only-btn"
+                  onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                  title={`Officer ${authSession.officer.officer_id}`}
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    backgroundColor: '#1e293b',
+                    color: '#ffffff',
+                    border: '2px solid #94a3b8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.1rem',
+                    cursor: 'pointer',
+                  }}
                 >
-                  Logout
+                  🏛️
                 </button>
+
+                {isProfileMenuOpen && (
+                  <>
+                    <div
+                      className="dropdown-transparent-overlay"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                      style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                    />
+                    <div
+                      className="navbar-profile-popover"
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 'calc(100% + 8px)',
+                        width: '210px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.14)',
+                        border: '1px solid #e2e8f0',
+                        zIndex: 100,
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                      }}
+                    >
+                      <div style={{ paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#0f172a' }}>
+                          Officer: {authSession.officer.officer_id}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Department of Agriculture
+                        </div>
+                      </div>
+
+                      <Link
+                        to="/aeo"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: '600',
+                          color: '#334155',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <span>🏛️</span> AEO Workspace
+                      </Link>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-navbar-logout"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          handleOfficerLogout();
+                        }}
+                        title="Logout from officer session"
+                        data-testid="navbar-logout-btn"
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          backgroundColor: '#fef2f2',
+                          color: '#dc2626',
+                          border: '1px solid #fecaca',
+                          borderRadius: '8px',
+                          fontWeight: '700',
+                          fontSize: '0.825rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span>🚪</span> Logout
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <button
