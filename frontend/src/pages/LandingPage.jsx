@@ -1,59 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import NearbyCommunityIssues from '../components/NearbyCommunityIssues';
-
-const PRESET_REGIONS = {
-  warangal: { name: 'Warangal Agricultural Heartland', lat: 17.9689, lng: 79.5941 },
-  nalgonda: { name: 'Nalgonda District', lat: 17.0575, lng: 79.2684 },
-  khammam: { name: 'Khammam District', lat: 17.2473, lng: 80.1514 },
-  karimnagar: { name: 'Karimnagar District', lat: 18.4386, lng: 79.1288 },
-  nizamabad: { name: 'Nizamabad District', lat: 18.6725, lng: 78.0941 },
-  hyderabad: { name: 'Rangareddy / Hyderabad Rural', lat: 17.3850, lng: 78.4867 },
-};
 
 export default function LandingPage() {
   const { t, currentLang } = useLanguage();
-
-  // 3 KM Community Radar Location State
-  const [selectedRegion, setSelectedRegion] = useState('warangal');
-  const [radarLat, setRadarLat] = useState(17.9689);
-  const [radarLng, setRadarLng] = useState(79.5941);
-  const [locName, setLocName] = useState('Warangal Agricultural Heartland');
-  const [isDetectingGps, setIsDetectingGps] = useState(false);
-
-  const handleRegionChange = (e) => {
-    const key = e.target.value;
-    setSelectedRegion(key);
-    if (PRESET_REGIONS[key]) {
-      setRadarLat(PRESET_REGIONS[key].lat);
-      setRadarLng(PRESET_REGIONS[key].lng);
-      setLocName(PRESET_REGIONS[key].name);
-    }
-  };
-
-  const handleDetectGps = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
-    setIsDetectingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setRadarLat(pos.coords.latitude);
-        setRadarLng(pos.coords.longitude);
-        setLocName('Your Detected GPS Location');
-        setSelectedRegion('custom');
-        setIsDetectingGps(false);
-      },
-      (err) => {
-        console.warn('GPS detection failed:', err);
-        setIsDetectingGps(false);
-        alert('Could not detect exact GPS location. Showing default agricultural region.');
-      },
-      { timeout: 8000 }
-    );
-  };
 
   return (
     <div className="landing-page">
@@ -180,73 +130,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 2. LIVE 3 KM NEARBY COMMUNITY ISSUES RADAR */}
-      <section className="home-community-radar-section" id="community-radar">
-        <div className="section-header-center">
-          <div className="hero-pill-badge" style={{ margin: '0 auto 10px auto' }}>
-            <span className="badge-leaf">📍</span>
-            <span>{currentLang === 'te' ? 'ప్రత్యక్ష 3 కి.మీ కమ్యూనిటీ సమస్యలు' : 'LIVE 3 KM COMMUNITY RADAR'}</span>
-          </div>
-          <h2 className="section-heading">
-            {currentLang === 'te' ? 'మీ ప్రాంతంలో ఇతర రైతులు ఎదుర్కొంటున్న సమస్యలు' : 'Nearby Agricultural Issues & Local Alerts'}
-          </h2>
-          <p className="section-subheading">
-            {currentLang === 'te'
-              ? 'మీ పొలం నుండి 3 కిలోమీటర్ల పరిధిలోని సమస్యలను చూడండి. మీకూ అదే సమస్య ఉంటే "Me Too" నొక్కి ఆఫీసర్‌కు తెలియజేయండి.'
-              : 'Real-time agricultural reports within 3 km of your farm. If you face the same problem, tap "Me Too" to alert the officer without creating a duplicate case.'}
-          </p>
-        </div>
-
-        <div className="radar-container">
-          <div className="radar-location-bar">
-            <div className="radar-location-info">
-              <span className="radar-pin-icon">📍</span>
-              <div className="radar-loc-text">
-                <span className="loc-label">{currentLang === 'te' ? 'ఎంచుకున్న ప్రాంతం:' : 'Selected Location:'}</span>
-                <strong>{locName}</strong>
-                <span className="loc-coords">({radarLat.toFixed(4)}, {radarLng.toFixed(4)})</span>
-              </div>
-            </div>
-
-            <div className="radar-quick-locs">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline btn-radar-gps"
-                onClick={handleDetectGps}
-                disabled={isDetectingGps}
-              >
-                {isDetectingGps ? '🔄 Locating...' : '🎯 Detect My GPS'}
-              </button>
-
-              <select
-                className="radar-region-select"
-                value={selectedRegion}
-                onChange={handleRegionChange}
-              >
-                <option value="warangal">Warangal (Heartland)</option>
-                <option value="nalgonda">Nalgonda</option>
-                <option value="khammam">Khammam</option>
-                <option value="karimnagar">Karimnagar</option>
-                <option value="nizamabad">Nizamabad</option>
-                <option value="hyderabad">Rangareddy / Hyderabad Rural</option>
-                {selectedRegion === 'custom' && <option value="custom">📍 Detected GPS Location</option>}
-              </select>
-            </div>
-          </div>
-
-          <div className="radar-feed-wrap">
-            <NearbyCommunityIssues
-              latitude={radarLat}
-              longitude={radarLng}
-              crop=""
-              farmerPhone=""
-              farmerName="Nearby Farmer"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* 3. USER FLOW / HOW IT WORKS (మా పని విధానం) */}
+      {/* 2. USER FLOW / HOW IT WORKS (మా పని విధానం) */}
       <section className="workflow-section">
         <div className="section-header-center">
           <h2 className="section-heading">{t.howItWorksTitle}</h2>
