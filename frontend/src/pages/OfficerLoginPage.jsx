@@ -36,10 +36,18 @@ export default function OfficerLoginPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  const [credential, setCredential] = useState('AEO001');
-  const [password, setPassword] = useState('password123');
+  const [selectedOfficer, setSelectedOfficer] = useState(PRESET_AEOS[0]);
+  const [credential, setCredential] = useState(PRESET_AEOS[0].officer_id);
+  const [password, setPassword] = useState(PRESET_AEOS[0].password);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSelectOfficer = (officer) => {
+    setSelectedOfficer(officer);
+    setCredential(officer.officer_id);
+    setPassword(officer.password);
+    setErrorMessage('');
+  };
 
   const handleLoginWithOfficer = (officerData) => {
     const sessionData = {
@@ -47,6 +55,9 @@ export default function OfficerLoginPage() {
       authenticated_at: new Date().toISOString(),
     };
     localStorage.setItem('aeo_officer_session', JSON.stringify(sessionData));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('kisaansathi_auth_changed'));
+    }
     navigate('/aeo');
   };
 
@@ -82,114 +93,134 @@ export default function OfficerLoginPage() {
       return;
     }
 
-    // If ID is not in preset AEOs
     setErrorMessage('Invalid Officer ID or password. Please use Officer ID: AEO001 or AEO002.');
     setIsSubmitting(false);
   };
 
   return (
-    <div className="officer-page" data-testid="officer-login-page" style={{ padding: '40px 16px', minHeight: '80vh' }}>
+    <div className="officer-page" data-testid="officer-login-page" style={{ padding: '48px 16px', minHeight: '82vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div
         className="card officer-card"
         style={{
-          maxWidth: '460px',
-          margin: '0 auto',
+          width: '100%',
+          maxWidth: '440px',
           backgroundColor: '#ffffff',
-          borderRadius: '16px',
+          borderRadius: '20px',
           border: '1px solid #e2e8f0',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.08)',
+          boxShadow: '0 20px 35px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05)',
           overflow: 'hidden',
         }}
       >
-        {/* Clean Header */}
-        <div style={{ backgroundColor: '#ffffff', padding: '28px 20px 16px', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🏛️</div>
-          <h1 style={{ margin: '0 0 6px', fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
+        {/* Header */}
+        <div style={{ backgroundColor: '#ffffff', padding: '32px 24px 20px', textAlign: 'center' }}>
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              margin: '0 auto 14px',
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.75rem',
+            }}
+          >
+            🏛️
+          </div>
+          <h1 style={{ margin: '0 0 6px', fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
             AEO Officer Workspace
           </h1>
           <p style={{ margin: 0, fontSize: '0.8125rem', color: '#64748b' }}>
-            Agriculture Extension Officer Portal &bull; Department of Agriculture
+            Department of Agriculture &bull; Official Officer Portal
           </p>
         </div>
 
-        <div style={{ padding: '24px' }}>
-          {/* Credentials Info Box */}
+        <div style={{ padding: '0 28px 28px' }}>
+          {/* Active Officer Profile Card */}
           <div
             style={{
-              backgroundColor: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              borderRadius: '10px',
-              padding: '14px',
-              marginBottom: '20px',
-              fontSize: '0.8125rem',
-              color: '#166534',
+              backgroundColor: '#f8fafc',
+              border: '1.5px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '16px',
+              marginBottom: '22px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
             }}
           >
-            <div style={{ fontWeight: '700', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>🔑</span> Valid AEO Officer Logins:
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '800',
+                fontSize: '1.1rem',
+                flexShrink: 0,
+                boxShadow: '0 4px 10px rgba(22, 163, 74, 0.25)',
+              }}
+            >
+              {selectedOfficer.name.split(' ').map((n) => n[0]).join('')}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div>
-                <strong>AEO 1:</strong> ID: <code>AEO001</code> &bull; Password: <code>password123</code> (Srinivas Rao)
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontWeight: '800', fontSize: '0.95rem', color: '#0f172a' }}>
+                  {selectedOfficer.name}
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: '700',
+                    color: '#16a34a',
+                    backgroundColor: '#dcfce7',
+                    padding: '2px 7px',
+                    borderRadius: '999px',
+                  }}
+                >
+                  Verified AEO
+                </span>
               </div>
-              <div>
-                <strong>AEO 2:</strong> ID: <code>AEO002</code> &bull; Password: <code>password123</code> (Ramesh Kumar)
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {selectedOfficer.designation} &bull; {selectedOfficer.assigned_area}
               </div>
             </div>
           </div>
 
-          {/* 1-Click Fast Login Buttons for the 2 AEOs */}
-          <div style={{ marginBottom: '20px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Quick 1-Click Access:
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-              {PRESET_AEOS.map((aeo) => (
+          {/* Profile Switcher (Subtle & clean) */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            {PRESET_AEOS.map((aeo) => {
+              const isSelected = selectedOfficer.officer_id === aeo.officer_id;
+              return (
                 <button
                   key={aeo.officer_id}
                   type="button"
-                  onClick={() => handleLoginWithOfficer(aeo)}
+                  onClick={() => handleSelectOfficer(aeo)}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 14px',
+                    flex: 1,
+                    padding: '8px 10px',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#f8fafc',
+                    fontSize: '0.75rem',
+                    fontWeight: isSelected ? '700' : '500',
+                    border: isSelected ? '1.5px solid #16a34a' : '1px solid #cbd5e1',
+                    backgroundColor: isSelected ? '#f0fdf4' : '#ffffff',
+                    color: isSelected ? '#15803d' : '#64748b',
                     cursor: 'pointer',
-                    textAlign: 'left',
                     transition: 'all 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ecfdf5';
-                    e.currentTarget.style.borderColor = '#86efac';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
-                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    textAlign: 'center',
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.875rem', color: '#1e293b' }}>
-                      {aeo.name} ({aeo.officer_id})
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                      {aeo.designation} &bull; {aeo.assigned_area}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#16a34a', backgroundColor: '#dcfce7', padding: '4px 10px', borderRadius: '6px' }}>
-                    Login →
-                  </span>
+                  {isSelected ? '✓ ' : ''}{aeo.name.split(' ')[0]} ({aeo.officer_id})
                 </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#94a3b8', fontSize: '0.75rem' }}>
-            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
-            <span style={{ padding: '0 10px' }}>OR TYPE CREDENTIALS</span>
-            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+              );
+            })}
           </div>
 
           {errorMessage && (
@@ -201,7 +232,7 @@ export default function OfficerLoginPage() {
                 padding: '10px 14px',
                 borderRadius: '8px',
                 marginBottom: '16px',
-                fontSize: '0.875rem',
+                fontSize: '0.8125rem',
                 fontWeight: '600',
               }}
               data-testid="login-error-message"
@@ -211,46 +242,72 @@ export default function OfficerLoginPage() {
           )}
 
           <form onSubmit={handleSubmit} data-testid="officer-login-form">
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.875rem', color: '#334155' }}>
-                AEO Officer ID or Phone
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.8125rem', color: '#334155' }}>
+                AEO Officer ID
               </label>
               <input
                 data-testid="officer-id-input"
                 type="text"
-                placeholder="e.g. AEO001 or 9876543210"
+                placeholder="e.g. AEO001"
                 value={credential}
                 onChange={(e) => setCredential(e.target.value)}
                 required
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
+                  padding: '11px 13px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #cbd5e1',
+                  backgroundColor: '#f8fafc',
                   fontSize: '0.9375rem',
+                  fontWeight: '600',
+                  color: '#0f172a',
                   boxSizing: 'border-box',
+                  outline: 'none',
+                  transition: 'border-color 0.15s ease',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#16a34a';
+                  e.target.style.backgroundColor = '#ffffff';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#cbd5e1';
+                  e.target.style.backgroundColor = '#f8fafc';
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '22px' }}>
-              <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.875rem', color: '#334155' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.8125rem', color: '#334155' }}>
                 Password
               </label>
               <input
                 data-testid="officer-password-input"
                 type="password"
-                placeholder="Enter password (default: password123)"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
+                  padding: '11px 13px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #cbd5e1',
+                  backgroundColor: '#f8fafc',
                   fontSize: '0.9375rem',
+                  fontWeight: '600',
+                  color: '#0f172a',
                   boxSizing: 'border-box',
+                  outline: 'none',
+                  transition: 'border-color 0.15s ease',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#16a34a';
+                  e.target.style.backgroundColor = '#ffffff';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#cbd5e1';
+                  e.target.style.backgroundColor = '#f8fafc';
                 }}
               />
             </div>
@@ -261,22 +318,34 @@ export default function OfficerLoginPage() {
               disabled={isSubmitting}
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '13px',
                 backgroundColor: '#16a34a',
                 color: '#ffffff',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '10px',
                 fontWeight: '700',
-                fontSize: '0.9375rem',
+                fontSize: '0.95rem',
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(22, 163, 74, 0.28)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) e.currentTarget.style.backgroundColor = '#15803d';
+              }}
+              onMouseLeave={(e) => {
+                if (!isSubmitting) e.currentTarget.style.backgroundColor = '#16a34a';
               }}
             >
-              {isSubmitting ? 'Verifying...' : 'Sign In as AEO'}
+              {isSubmitting ? 'Authenticating...' : `Sign In as ${selectedOfficer.name.split(' ')[0]} →`}
             </button>
           </form>
 
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <Link to="/" style={{ fontSize: '0.8125rem', color: '#64748b', textDecoration: 'none' }}>
+          <div style={{ marginTop: '22px', textAlign: 'center' }}>
+            <Link to="/" style={{ fontSize: '0.8125rem', color: '#64748b', textDecoration: 'none', fontWeight: '500' }}>
               ← Return to Farmer Portal
             </Link>
           </div>

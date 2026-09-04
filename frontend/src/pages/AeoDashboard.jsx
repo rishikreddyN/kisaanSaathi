@@ -114,6 +114,7 @@ export default function AeoDashboard() {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.removeItem('aeo_officer_session');
+        window.dispatchEvent(new Event('kisaansathi_auth_changed'));
       }
     } catch {}
     setOfficerSession(null);
