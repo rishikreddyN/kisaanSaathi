@@ -884,6 +884,37 @@ export async function confirmSimilarIssues(incidentId, matchedIncidentIds, farme
   }
 }
 
+/**
+ * Plan My Crop: Generates top 3-5 crop recommendations based on land, soil, location and season.
+ */
+export async function getCropPlanningRecommendations({
+  landAreaAcres,
+  soilType,
+  latitude,
+  longitude,
+  language = 'en',
+}) {
+  const payload = {
+    land_area_acres: Number(landAreaAcres),
+    soil_type: String(soilType).toUpperCase(),
+    latitude: latitude != null ? Number(latitude) : null,
+    longitude: longitude != null ? Number(longitude) : null,
+    language: language || 'en',
+  };
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/crop-planning/recommend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.detail?.message || data?.message || 'Failed to fetch crop recommendations');
+  }
+  return data;
+}
+
 export default {
   checkHealth,
   submitIncident,
@@ -920,6 +951,7 @@ export default {
   getFarmerHistory,
   getSimilarIssues,
   confirmSimilarIssues,
+  getCropPlanningRecommendations,
   API_BASE_URL,
 };
 

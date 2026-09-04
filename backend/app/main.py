@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.api.v1.health import router as health_router
 from app.api.v1.incidents import router as incidents_router
 from app.api.v1.vision import router as vision_router
+from app.api.v1.crop_planning import router as crop_planning_router
 
 from contextlib import asynccontextmanager
 from app.services.indic_asr_service import warmup_indic_conformer_cache
@@ -51,10 +52,12 @@ from fastapi.staticfiles import StaticFiles
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(incidents_router, prefix=settings.API_V1_PREFIX)
 app.include_router(vision_router, prefix=settings.API_V1_PREFIX)
+app.include_router(crop_planning_router, prefix=settings.API_V1_PREFIX)
 
 # Also expose /api directly for backward-compatibility & simplicity
 app.include_router(incidents_router, prefix="/api")
 app.include_router(vision_router, prefix="/api")
+app.include_router(crop_planning_router, prefix="/api")
 
 # Mount local uploads for audio and photo playback
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
