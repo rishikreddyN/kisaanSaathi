@@ -25,6 +25,7 @@ import CaseFollowupSection from '../components/CaseFollowupSection';
 import FieldVisitModal from '../components/FieldVisitModal';
 import GovernmentSupportCard from '../components/GovernmentSupportCard';
 import SimilarPreviousCasesSection from '../components/SimilarPreviousCasesSection';
+import AeoAnnouncementModal from '../components/AeoAnnouncementModal';
 
 export default function AeoDashboard() {
   const navigate = useNavigate();
@@ -51,6 +52,9 @@ export default function AeoDashboard() {
 
   // Farmer history modal
   const [farmerHistoryData, setFarmerHistoryData] = useState(null);
+
+  // AEO Official Announcements modal
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
 
   // Loading & error states
   const [loading, setLoading] = useState(true);
@@ -459,6 +463,23 @@ export default function AeoDashboard() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setShowAnnouncementModal(true)}
+              className="btn btn-sm btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                fontWeight: '700',
+                backgroundColor: '#16a34a',
+                borderColor: '#15803d',
+              }}
+              data-testid="create-announcement-btn"
+            >
+              <span>📢</span> + Create Announcement
+            </button>
             <button
               type="button"
               onClick={loadDashboardData}
@@ -1334,6 +1355,16 @@ export default function AeoDashboard() {
           </div>
         </div>
       )}
+
+      {/* Official AEO Announcements Modal */}
+      <AeoAnnouncementModal
+        isOpen={showAnnouncementModal}
+        onClose={() => setShowAnnouncementModal(false)}
+        onCreated={() => {
+          setShowAnnouncementModal(false);
+          loadDashboardData();
+        }}
+      />
     </div>
   );
 }

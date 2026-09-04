@@ -9,6 +9,8 @@ import MyIssuesPage from './pages/MyIssuesPage';
 import PlanMyCropPage from './pages/PlanMyCropPage';
 import LanguageSelector from './components/LanguageSelector';
 import AuthModal from './components/AuthModal';
+import FarmerNotificationDrawer from './components/FarmerNotificationDrawer';
+import { getUnreadNotificationsCount } from './services/communityDataStore';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 
 function MainLayout() {
@@ -19,6 +21,8 @@ function MainLayout() {
   const isAeoRoute = location.pathname.startsWith('/aeo') || location.pathname.startsWith('/dashboard');
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(() => getUnreadNotificationsCount());
   const [authSession, setAuthSession] = useState(() => {
     try {
       const farmer = JSON.parse(localStorage.getItem('kisaansathi_farmer_profile') || 'null');
@@ -42,9 +46,12 @@ function MainLayout() {
   useEffect(() => {
     window.addEventListener('storage', syncAuth);
     window.addEventListener('kisaansathi_auth_changed', syncAuth);
+    const syncNotifs = () => setUnreadCount(getUnreadNotificationsCount());
+    window.addEventListener('krishi_community_storage_updated', syncNotifs);
     return () => {
       window.removeEventListener('storage', syncAuth);
       window.removeEventListener('kisaansathi_auth_changed', syncAuth);
+      window.removeEventListener('krishi_community_storage_updated', syncNotifs);
     };
   }, []);
 
@@ -65,6 +72,15 @@ function MainLayout() {
     <div className="app-container">
       {/* Universal Login Modal */}
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+
+      {/* Global Farmer Notifications Drawer */}
+      <FarmerNotificationDrawer
+        isOpen={isNotifDrawerOpen}
+        onClose={() => {
+          setIsNotifDrawerOpen(false);
+          setUnreadCount(getUnreadNotificationsCount());
+        }}
+      />
 
       {/* Navigation Bar: If on AEO Workspace, show ONLY dedicated AEO header with Logout */}
       {isAeoRoute ? (
@@ -174,6 +190,23 @@ function MainLayout() {
           </div>
 
           <div className="navbar-right">
+            {/* Global Farmer Notifications Bell */}
+            <button
+              type="button"
+              className="btn btn-navbar-notifications"
+              onClick={() => setIsNotifDrawerOpen(true)}
+              title="Agricultural alerts, AEO advisories, and community updates"
+              data-testid="navbar-notifications-btn"
+            >
+              <span className="notif-bell-icon">🔔</span>
+              <span className="notif-label-text">Notifications</span>
+              {unreadCount > 0 && (
+                <span className="notif-unread-badge" data-testid="navbar-notif-badge">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
             {/* Multi-language Selector */}
             <LanguageSelector />
 
