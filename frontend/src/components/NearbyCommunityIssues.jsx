@@ -17,13 +17,22 @@ export default function NearbyCommunityIssues({
   farmerName = '',
   onSelectExistingIssue = () => {},
 }) {
+  const storedProfile = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('kisaansathi_farmer_profile') || 'null');
+    } catch {
+      return null;
+    }
+  })();
+  const effectiveFarmerPhone = farmerPhone || storedProfile?.phone || '';
+
   const [nearbyIssues, setNearbyIssues] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [confirmedMap, setConfirmedMap] = useState({}); // { [incidentId]: true }
   const [confirmingId, setConfirmingId] = useState(null);
   const [phonePromptId, setPhonePromptId] = useState(null);
-  const [inputPhone, setInputPhone] = useState(farmerPhone || '');
+  const [inputPhone, setInputPhone] = useState(farmerPhone || storedProfile?.phone || '');
 
   const hasCoordinates =
     latitude !== null &&
@@ -37,7 +46,7 @@ export default function NearbyCommunityIssues({
     Number(longitude) >= -180 &&
     Number(longitude) <= 180;
 
-  // Fetch nearby issues whenever location or crop changes
+  // Fetch nearby issues whenever location, crop, or farmer phone changes
   useEffect(() => {
     if (!hasCoordinates) {
       setNearbyIssues([]);
@@ -53,12 +62,21 @@ export default function NearbyCommunityIssues({
       longitude,
       radiusKm: 3.0,
       crop: crop || null,
+      excludePhone: effectiveFarmerPhone || null,
       limit: 15,
     })
       .then((res) => {
         if (isMounted) {
           if (res && res.success) {
-            setNearbyIssues(res.items || []);
+            const cleanUserPhone = effectiveFarmerPhone.replace(/\D/g, '').slice(-10);
+            const items = (res.items || []).filter((item) => {
+              if (cleanUserPhone && item.farmer_phone) {
+                const itemPhone = String(item.farmer_phone).replace(/\D/g, '').slice(-10);
+                if (itemPhone && itemPhone === cleanUserPhone) return false;
+              }
+              return true;
+            });
+            setNearbyIssues(items);
           } else {
             setNearbyIssues([]);
           }
@@ -77,7 +95,7 @@ export default function NearbyCommunityIssues({
     return () => {
       isMounted = false;
     };
-  }, [latitude, longitude, crop]);
+  }, [latitude, longitude, crop, effectiveFarmerPhone]);
 
   // Handle "Me Too" button click
   const handleMeTooClick = async (incident) => {

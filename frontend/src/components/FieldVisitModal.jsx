@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { scheduleFieldVisit, completeFieldVisit } from '../services/api';
 
 /**
@@ -14,7 +14,13 @@ export default function FieldVisitModal({
   if (!isOpen || !incident) return null;
 
   const farmer = incident.farmer || {};
-  const visits = incident.field_visits || [];
+  const [caseVisits, setCaseVisits] = useState(incident.field_visits || []);
+
+  useEffect(() => {
+    if (incident?.field_visits) {
+      setCaseVisits(incident.field_visits);
+    }
+  }, [incident?.field_visits]);
 
   const [tab, setTab] = useState('SCHEDULE'); // 'SCHEDULE' | 'LIST'
   const [scheduledDate, setScheduledDate] = useState(
@@ -51,6 +57,11 @@ export default function FieldVisitModal({
       });
 
       if (res.success) {
+        if (res.all_visits) {
+          setCaseVisits(res.all_visits);
+        } else if (res.visit) {
+          setCaseVisits((prev) => [...prev, res.visit]);
+        }
         setSuccessMsg(`Field visit scheduled for ${scheduledDate} at ${scheduledTime}. Notice sent to farmer.`);
         if (onVisitUpdated) onVisitUpdated();
         setTimeout(() => setTab('LIST'), 1200);
@@ -80,6 +91,11 @@ export default function FieldVisitModal({
 
       if (res.success) {
         setSelectedVisitToComplete(null);
+        if (res.all_visits) {
+          setCaseVisits(res.all_visits);
+        } else if (res.visit) {
+          setCaseVisits((prev) => prev.map((v) => (v.id === res.visit.id ? res.visit : v)));
+        }
         if (onVisitUpdated) onVisitUpdated();
       }
     } catch (err) {
@@ -175,7 +191,7 @@ export default function FieldVisitModal({
               cursor: 'pointer',
             }}
           >
-            Visits for this Case ({visits.length})
+            Visits for this Case ({caseVisits.length})
           </button>
         </div>
 
@@ -281,13 +297,13 @@ export default function FieldVisitModal({
           </form>
         ) : (
           <div>
-            {visits.length === 0 ? (
+            {caseVisits.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
                 No field visits scheduled yet for this case.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {visits.map((v, i) => (
+                {caseVisits.map((v, i) => (
                   <div
                     key={v.id || i}
                     style={{

@@ -1,4 +1,5 @@
 import uuid
+import re
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from app.core.phone import normalize_phone
@@ -182,11 +183,13 @@ def get_nearby_incidents_for_farmer(
     radius_km: float = 3.0,
     crop: Optional[str] = None,
     current_incident_id: Optional[str] = None,
+    exclude_phone: Optional[str] = None,
     limit: int = 20,
 ) -> Dict[str, Any]:
     """
     Farmer-Facing Nearby Community Issues (Section 3 & 4):
     - Strictly enforces default 3 KM radius (NOT the AEO 7.5 KM cluster zone).
+    - Excludes requesting farmer's own issues (based on exclude_phone).
     - Uses deterministic geodesic distance calculation (zero LLM distance hallucinations).
     - Prioritizes: (1) Same crop, (2) Similar condition/symptoms, (3) Distance (closest first), (4) Recency.
     - Privacy Enforcement: NEVER exposes other farmers' exact coordinates, phone numbers, or identities.
@@ -218,6 +221,21 @@ def get_nearby_incidents_for_farmer(
 
     nearby_candidates = []
     farmer_crop_clean = (crop or "").strip().lower()
+    clean_exclude_phone = re.sub(r"\D", "", str(exclude_phone))[-10:] if exclude_phone else None
+
+    # Pre-fetch farmer phone numbers to exclude requesting farmer's own issues
+    farmer_phone_map = {}
+    if client and raw_incidents:
+        farmer_ids = list({str(inc["farmer_id"]) for inc in raw_incidents if inc.get("farmer_id")})
+        if farmer_ids:
+            try:
+                f_res = client.table("farmers").select("id, name, phone").in_("id", farmer_ids).execute()
+                for f in (f_res.data or []):
+                    p = str(f.get("phone") or "")
+                    if p:
+                        farmer_phone_map[str(f.get("id"))] = re.sub(r"\D", "", p)[-10:]
+            except Exception:
+                pass
 
     for inc in raw_incidents:
         inc_id = str(inc.get("id"))
@@ -228,6 +246,15 @@ def get_nearby_incidents_for_farmer(
         # Exclude REJECTED incidents from community alert feed
         if inc.get("status") == "REJECTED":
             continue
+
+        # Exclude incidents submitted by the requesting farmer (own phone number)
+        if clean_exclude_phone:
+            inc_f_id = str(inc.get("farmer_id") or "")
+            inc_phone = farmer_phone_map.get(inc_f_id)
+            if not inc_phone and inc.get("farmer_phone"):
+                inc_phone = re.sub(r"\D", "", str(inc.get("farmer_phone")))[-10:]
+            if inc_phone and inc_phone == clean_exclude_phone:
+                continue
 
         fmt = format_incident_location(dict(inc))
         inc_lat = fmt.get("latitude")
@@ -277,6 +304,7 @@ def get_nearby_incidents_for_farmer(
                 "status": inc.get("status", "OPEN"),
                 "community_confirmations_count": yes_confs,
                 "has_similar_crop": is_same_crop,
+                "farmer_phone": farmer_phone_map.get(str(inc.get("farmer_id") or ""), ""),
             })
 
     # Prioritization:

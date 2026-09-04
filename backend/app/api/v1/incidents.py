@@ -954,6 +954,7 @@ async def get_nearby_incidents(
     radius_km: float = Query(3.0, description="Search radius in kilometers (default 3.0 KM)"),
     crop: Optional[str] = Query(None, description="Optional crop filter for relevance prioritization"),
     current_incident_id: Optional[str] = Query(None, description="Exclude currently reported incident"),
+    exclude_phone: Optional[str] = Query(None, description="Exclude farmer's own phone number from community feed"),
     limit: int = Query(20, description="Max number of items to return"),
 ):
     try:
@@ -963,6 +964,7 @@ async def get_nearby_incidents(
             radius_km=radius_km,
             crop=crop,
             current_incident_id=current_incident_id,
+            exclude_phone=exclude_phone,
             limit=limit,
         )
         return result

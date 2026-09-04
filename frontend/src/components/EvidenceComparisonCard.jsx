@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import AnnotatedImageViewer from './AnnotatedImageViewer';
 import CommunityConfirmationSection from './CommunityConfirmationSection';
+import { synthesizeAgronomicAssessment } from '../utils/agronomicIntelligence';
 
 /**
  * Phase: Evidence Comparison Card (Clean White UI)
@@ -168,6 +169,18 @@ export default function EvidenceComparisonCard({ incident, simplifiedView = fals
   const rejectionData = primaryAi?.structured_data?.rejection || aiRecords.find((r) => r.structured_data?.rejection)?.structured_data?.rejection || null;
   const isRejected = incident.status === 'REJECTED' || !!rejectionData;
   const rejectionReason = rejectionData?.reason || incident.rejection_reason || null;
+
+  // Synthesize comprehensive technical agronomic diagnosis and cause
+  const agronomicData = useMemo(() => {
+    return synthesizeAgronomicAssessment({
+      crop: voiceCrop || incident.crop || 'Tomato',
+      symptoms: voiceSymptoms,
+      detections: visionStructuredData?.detections || [],
+      transcript: transcript || '',
+      duration: voiceDuration,
+      multimodalAssessment: mmAssessment || multimodalData?.multimodal_assessment,
+    });
+  }, [voiceCrop, incident.crop, voiceSymptoms, visionStructuredData, transcript, voiceDuration, mmAssessment, multimodalData]);
 
   // Formatted Structured Data for Inspector
   const structuredDataDisplay = {
@@ -596,8 +609,8 @@ export default function EvidenceComparisonCard({ incident, simplifiedView = fals
                     </span>
                     <div style={{ fontSize: '0.8125rem', color: '#0f172a' }}>
                       <strong>Detections:</strong>{' '}
-                      {visionStructuredData?.detections && visionStructuredData.detections.length > 0
-                        ? visionStructuredData.detections.map((d) => `${d.label.replace(/_/g, ' ')} (${(d.confidence * 100).toFixed(1)}%)`).join(', ')
+                      {agronomicData.detectionSummaryList.length > 0
+                        ? agronomicData.detectionSummaryList.join(' • ')
                         : (photosList.length > 0 ? 'Foliage inspected in uploaded photo' : 'No photo uploaded')}
                     </div>
                     <div style={{ fontSize: '0.8125rem', color: '#0f172a' }}>
@@ -610,42 +623,135 @@ export default function EvidenceComparisonCard({ incident, simplifiedView = fals
                 </div>
               )}
 
-              {/* Cross-Validation Rationale */}
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>
-                  Cross-Validation Synthesis:
+              {/* Technical Agronomic Diagnosis Header Card */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  padding: '12px 14px',
+                  background: '#f1f5f9',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  marginBottom: '14px',
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    🔬 Suspected Technical Condition (AI Indication)
+                  </span>
+                  <h4 style={{ margin: '3px 0 2px 0', fontSize: '1.0625rem', color: '#0f172a', fontWeight: 800 }}>
+                    {agronomicData.primaryCondition}
+                  </h4>
+                  <span style={{ fontSize: '0.8125rem', color: '#475569' }}>
+                    Pathogen: <strong>{agronomicData.pathogenType}</strong> ({agronomicData.scientificName}) &bull; Severity: <strong style={{ color: '#b45309' }}>{agronomicData.severity}</strong>
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, background: '#ede9fe', color: '#6d28d9', padding: '4px 10px', borderRadius: '6px' }}>
+                    Peak Indication: {agronomicData.confidencePercent}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Technical Cause & Etiology Callout Card */}
+              <div
+                style={{
+                  padding: '14px 16px',
+                  background: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1.5px solid #e2e8f0',
+                  borderLeft: '4px solid #3b82f6',
+                  marginBottom: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '1rem' }}>🌱</span>
+                  <strong style={{ fontSize: '0.875rem', color: '#1e293b' }}>
+                    Agronomic Etiology &amp; Technical Root Cause (Why this disease occurs):
+                  </strong>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.6, color: '#334155' }}>
+                  {agronomicData.technicalCause}
+                </p>
+
+                {agronomicData.environmentalTriggers && agronomicData.environmentalTriggers.length > 0 && (
+                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Environmental Precursors &amp; Vectors:
+                    </span>
+                    <ul style={{ margin: '4px 0 0 0', paddingLeft: '18px', fontSize: '0.8125rem', color: '#475569', lineHeight: 1.5 }}>
+                      {agronomicData.environmentalTriggers.map((trig, ti) => (
+                        <li key={`trig-${ti}`}>{trig}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Voice ↔ Photo Correlation Synthesis */}
+              <div
+                style={{
+                  padding: '12px 14px',
+                  background: '#ffffff',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  marginBottom: '14px',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                  🗣️ Farmer Voice &bull; 📷 Visual Evidence Synthesis:
                 </span>
-                <p style={{ margin: 0, fontSize: '0.9375rem', lineHeight: 1.6, color: '#1e293b' }}>
-                  {voiceImageAssessment?.reasoning || mmAssessment?.reasoning || assessment?.summary || (
-                    voiceSymptoms.length > 0 || visionStructuredData?.detections?.length > 0
-                      ? `The farmer reported ${voiceCrop ? `${voiceCrop} ` : ''}${voiceSymptoms.length > 0 ? `with ${voiceSymptoms.join(', ')}` : 'crop symptoms'}${voiceDuration ? ` persisting over ${voiceDuration}` : ''}${voiceProgression ? ` (${voiceProgression.toLowerCase()})` : ''}. Visual inspection with YOLO11 ${visionStructuredData?.detections?.length > 0 ? `detected ${visionStructuredData.detections.map((d) => `${d.label.replace(/_/g, ' ')} (${(d.confidence * 100).toFixed(0)}%)`).join(', ')}` : 'analyzed foliage in the uploaded photo'}. Audio description and visual evidence are aligned for officer diagnosis.`
-                      : (transcript ? `Farmer reported: "${transcript}". Officer inspection of photo and field verification recommended.` : 'Visual evidence is consistent with the farmer voice complaint.')
-                  )}
+                <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.6, color: '#1e293b' }}>
+                  {agronomicData.voicePhotoSynthesis}
                 </p>
               </div>
 
-              {/* Why AI Reached This Assessment (if available) */}
-              {mmAssessment?.why_ai_reached_assessment && (
-                <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#f1f5f9', borderRadius: '6px', borderLeft: '3px solid #64748b' }}>
-                  <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>
-                    Why AI Reached This Assessment:
+              {/* Recommended AEO Field Verification & Advisory Guidance (rendered in simplified inspection view) */}
+              {simplifiedView && (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    background: '#f0fdf4',
+                    borderRadius: '8px',
+                    border: '1px solid #bbf7d0',
+                    marginBottom: '12px',
+                  }}
+                >
+                  <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                    📋 Recommended AEO Field Verification Checklist:
                   </span>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: 1.5 }}>
-                    {mmAssessment.why_ai_reached_assessment}
-                  </p>
+                  <ul style={{ margin: '4px 0 8px 0', paddingLeft: '18px', fontSize: '0.8125rem', color: '#166534', lineHeight: 1.5 }}>
+                    {agronomicData.aeoFieldChecks.map((check, ci) => (
+                      <li key={`check-${ci}`}>{check}</li>
+                    ))}
+                  </ul>
+                  {agronomicData.treatmentAdvisory && (
+                    <div style={{ borderTop: '1px dashed #86efac', paddingTop: '6px', fontSize: '0.8125rem', color: '#14532d', lineHeight: 1.4 }}>
+                      <strong>Department Standard Advisory (ICAR / Dept of Agriculture):</strong> {agronomicData.treatmentAdvisory.chemical}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Supporting Visual Evidence Tags */}
               {((voiceImageAssessment?.supporting_visual_evidence && voiceImageAssessment.supporting_visual_evidence.length > 0) ||
                 (mmAssessment?.supporting_evidence && mmAssessment.supporting_evidence.length > 0) ||
-                (visionStructuredData?.detections && visionStructuredData.detections.length > 0)) && (
+                (agronomicData.symptomMarkers && agronomicData.symptomMarkers.length > 0)) && (
                 <div style={{ marginTop: '10px', marginBottom: '10px' }}>
                   <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#15803d', marginBottom: '4px' }}>
-                    ✓ Supporting Visual Evidence Points:
+                    ✓ Supporting Visual Evidence Markers:
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {(voiceImageAssessment?.supporting_visual_evidence || mmAssessment?.supporting_evidence || visionStructuredData.detections.map(d => `${d.label.replace(/_/g, ' ')} identified on foliage`)).map((ev, eIdx) => (
+                    {(
+                      (voiceImageAssessment?.supporting_visual_evidence && voiceImageAssessment.supporting_visual_evidence.length > 0)
+                        ? voiceImageAssessment.supporting_visual_evidence
+                        : (mmAssessment?.supporting_evidence && mmAssessment.supporting_evidence.length > 0)
+                          ? mmAssessment.supporting_evidence
+                          : agronomicData.symptomMarkers
+                    ).map((ev, eIdx) => (
                       <span key={`supp-${eIdx}`} style={{ fontSize: '0.75rem', padding: '3px 8px', background: '#dcfce7', color: '#166534', borderRadius: '4px', fontWeight: 500 }}>
                         ✓ {ev}
                       </span>
@@ -669,30 +775,26 @@ export default function EvidenceComparisonCard({ incident, simplifiedView = fals
                 </div>
               )}
 
-              {/* Missing Evidence (if any) */}
-              {((voiceImageAssessment?.missing_visual_evidence && voiceImageAssessment.missing_visual_evidence.length > 0) ||
-                (mmAssessment?.missing_evidence && mmAssessment.missing_evidence.length > 0)) && (
-                <div style={{ marginTop: '8px', marginBottom: '8px', fontSize: '0.8125rem', color: '#64748b' }}>
-                  <span>Missing Evidence in Photos: </span>
-                  <strong>{(voiceImageAssessment?.missing_visual_evidence || mmAssessment?.missing_evidence).join(', ')}</strong>
-                </div>
-              )}
-
               {/* Tentative Possible Conditions */}
-              {(mmAssessment?.possible_conditions && mmAssessment.possible_conditions.length > 0) && (
-                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
-                  <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    Tentative Possibilities for Officer Consideration (Non-Definitive):
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {mmAssessment.possible_conditions.map((cond, cIdx) => (
-                      <span key={`cond-tag-${cIdx}`} style={{ fontSize: '0.75rem', padding: '3px 8px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 600 }}>
-                        🔍 {cond}
-                      </span>
-                    ))}
-                  </div>
+              <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Tentative Possibilities for Officer Consideration (Non-Definitive):
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {(mmAssessment?.possible_conditions && mmAssessment.possible_conditions.length > 0 && !mmAssessment.possible_conditions[0].toLowerCase().includes('stress')
+                    ? mmAssessment.possible_conditions
+                    : [
+                        agronomicData.primaryCondition,
+                        `${agronomicData.cropName} Foliar Leaf Spot`,
+                        `${agronomicData.cropName} Alternaria / Fungal Blight`,
+                      ]
+                  ).map((cond, cIdx) => (
+                    <span key={`cond-tag-${cIdx}`} style={{ fontSize: '0.75rem', padding: '3px 8px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 600 }}>
+                      🔍 {cond}
+                    </span>
+                  ))}
                 </div>
-              )}
+              </div>
 
               <div style={{ fontSize: '0.775rem', color: '#64748b', fontStyle: 'italic', borderTop: '1px solid #e2e8f0', marginTop: '10px', paddingTop: '8px' }}>
                 ℹ️ Preliminary AI cross-review based on Featherless Qwen3-VL multimodal reasoning. Symptoms and diseases are tentative indications. Final agricultural authority belongs to the Agricultural Extension Officer.

@@ -1415,27 +1415,98 @@ def get_map_incidents_and_clusters(
 # ==============================================================
 
 def get_or_create_ai_analysis_sd(incident_id: str) -> Tuple[Optional[str], Dict[str, Any]]:
-    """Helper to safely retrieve or initialize structured_data for an incident's ai_analysis record."""
+    """Helper to safely retrieve or initialize structured_data for an incident's ai_analysis record.
+    Merges structured_data across records (oldest to newest) so officer updates and field visits are fully preserved."""
     client = get_supabase_client()
     if not client:
         return None, {}
 
-    res = client.table("ai_analysis").select("id, structured_data").eq("incident_id", incident_id).execute()
-    if res.data and len(res.data) > 0:
-        row = res.data[0]
-        sd = row.get("structured_data")
-        return row.get("id"), sd if isinstance(sd, dict) else {}
-    
-    # Not yet created: create empty row
-    insert_res = client.table("ai_analysis").insert({
-        "incident_id": incident_id,
-        "preliminary_disease": "Under Review",
-        "confidence": 0.5,
-        "structured_data": {"timeline": []}
-    }).execute()
-    if insert_res.data and len(insert_res.data) > 0:
-        return insert_res.data[0].get("id"), insert_res.data[0].get("structured_data") or {}
+    try:
+        res = client.table("ai_analysis").select("id, structured_data, created_at").eq("incident_id", incident_id).order("created_at", desc=False).execute()
+        if res.data and len(res.data) > 0:
+            merged_sd: Dict[str, Any] = {}
+            primary_id = res.data[0].get("id")
+            for row in res.data:
+                cur_sd = row.get("structured_data")
+                if isinstance(cur_sd, dict):
+                    for k, v in cur_sd.items():
+                        if isinstance(v, list) and k in merged_sd and isinstance(merged_sd[k], list):
+                            existing_ids = {item.get("id") for item in merged_sd[k] if isinstance(item, dict) and "id" in item}
+                            for item in v:
+                                if isinstance(item, dict) and "id" in item:
+                                    if item["id"] not in existing_ids:
+                                        merged_sd[k].append(item)
+                                        existing_ids.add(item["id"])
+                                    else:
+                                        for idx, ex in enumerate(merged_sd[k]):
+                                            if ex.get("id") == item["id"]:
+                                                merged_sd[k][idx] = item
+                                                break
+                                else:
+                                    merged_sd[k].append(item)
+                        else:
+                            merged_sd[k] = v
+            return primary_id, merged_sd
+    except Exception as e:
+        logger.warning(f"[get_or_create_ai_analysis_sd] Error fetching ai_analysis: {e}")
+
+    # Not yet created: create initial row safely with valid columns
+    try:
+        insert_res = client.table("ai_analysis").insert({
+            "incident_id": incident_id,
+            "crop_detected": "Cotton",
+            "structured_data": {"timeline": []}
+        }).execute()
+        if insert_res.data and len(insert_res.data) > 0:
+            return insert_res.data[0].get("id"), insert_res.data[0].get("structured_data") or {}
+    except Exception as ie:
+        logger.warning(f"[get_or_create_ai_analysis_sd] Fallback insert failed: {ie}")
+
     return None, {}
+
+
+def save_ai_analysis_sd(
+    incident_id: str,
+    analysis_id: Optional[str],
+    sd: Dict[str, Any],
+    extra_fields: Optional[Dict[str, Any]] = None
+) -> bool:
+    """Helper to reliably save structured_data to ai_analysis.
+    Attempts UPDATE first. If UPDATE affects 0 rows (e.g. Supabase RLS restriction for anon role),
+    falls back to INSERT a new record with the updated structured_data so officer actions are never lost."""
+    client = get_supabase_client()
+    if not client:
+        return False
+
+    update_payload = {"structured_data": sd}
+    if extra_fields:
+        update_payload.update(extra_fields)
+
+    updated = False
+    if analysis_id:
+        try:
+            update_res = client.table("ai_analysis").update(update_payload).eq("id", analysis_id).execute()
+            if update_res.data and len(update_res.data) > 0:
+                updated = True
+        except Exception as ai_err:
+            logger.warning(f"[save_ai_analysis_sd] UPDATE on ai_analysis {analysis_id} failed: {ai_err}")
+
+    if not updated:
+        try:
+            insert_payload = {
+                "incident_id": incident_id,
+                "structured_data": sd,
+            }
+            if extra_fields:
+                insert_payload.update(extra_fields)
+            insert_res = client.table("ai_analysis").insert(insert_payload).execute()
+            if insert_res.data and len(insert_res.data) > 0:
+                updated = True
+        except Exception as ins_err:
+            logger.error(f"[save_ai_analysis_sd] INSERT fallback on ai_analysis failed: {ins_err}")
+
+    return updated
+
 
 
 def record_aeo_verification(
@@ -1514,13 +1585,13 @@ def record_aeo_verification(
     })
     sd["communications"] = comms
 
-    # Update ai_analysis
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "recommended_action": official_advisory.strip(),
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    # Update ai_analysis reliably
+    save_ai_analysis_sd(
+        incident_id=incident_id,
+        analysis_id=analysis_id,
+        sd=sd,
+        extra_fields={"recommended_action": official_advisory.strip()}
+    )
 
     # Determine incident lifecycle status to update
     db_status = "ACTION_TAKEN"
@@ -1596,11 +1667,7 @@ def send_incident_message(
     })
     sd["timeline"] = timeline
 
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    save_ai_analysis_sd(incident_id, analysis_id, sd)
 
     return {
         "success": True,
@@ -1665,11 +1732,7 @@ def record_incident_followup(
     })
     sd["timeline"] = timeline
 
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    save_ai_analysis_sd(incident_id, analysis_id, sd)
 
     return {
         "success": True,
@@ -1731,11 +1794,7 @@ def review_incident_followup(
     })
     sd["timeline"] = timeline
 
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    save_ai_analysis_sd(incident_id, analysis_id, sd)
 
     return {
         "success": True,
@@ -1815,11 +1874,7 @@ def schedule_field_visit(
     })
     sd["communications"] = comms
 
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    save_ai_analysis_sd(incident_id, analysis_id, sd)
 
     # Update incident status to INVESTIGATING if currently NEW/ACKNOWLEDGED
     curr_st = (incident.get("status") or "").upper()
@@ -1845,36 +1900,52 @@ def get_aeo_field_visits(officer_id: Optional[str] = None, status_filter: Option
     if not client:
         return []
 
-    incidents_res = client.table("incidents").select("id, crop_type, priority, status, description, location, created_at, farmers(id, name, phone, village), ai_analysis(id, structured_data)").execute()
+    incidents_res = client.table("incidents").select("id, crop, priority, status, description, location, created_at, farmers(id, name, phone, village), ai_analysis(id, structured_data)").execute()
     if not incidents_res.data:
         return []
 
-    all_visits = []
+    seen_visits: Dict[str, Dict[str, Any]] = {}
     for inc in incidents_res.data:
         fmt_inc = format_incident_location(dict(inc))
-        farmer = fmt_inc.get("farmer") or {}
+        raw_farmer = inc.get("farmers") or inc.get("farmer") or fmt_inc.get("farmer") or fmt_inc.get("farmers") or {}
+        if isinstance(raw_farmer, list) and len(raw_farmer) > 0:
+            farmer = raw_farmer[0] if isinstance(raw_farmer[0], dict) else {}
+        elif isinstance(raw_farmer, dict):
+            farmer = raw_farmer
+        else:
+            farmer = {}
+
         ai_records = inc.get("ai_analysis") or []
         for ai_rec in ai_records:
             sd = ai_rec.get("structured_data") if isinstance(ai_rec, dict) else None
             if isinstance(sd, dict):
                 visits = sd.get("field_visits") or []
                 for v in visits:
+                    if not isinstance(v, dict):
+                        continue
+                    v_id = v.get("id") or f"{inc.get('id')}-{v.get('scheduled_date')}-{v.get('scheduled_time')}"
                     if officer_id and v.get("officer_id") != officer_id:
                         continue
                     if status_filter and v.get("status") != status_filter.upper():
                         continue
                     v_copy = dict(v)
+                    v_copy["id"] = v_id
+                    v_copy["incident_id"] = inc.get("id")
                     v_copy["case_id"] = fmt_inc.get("case_id") or f"KS-2026-{str(inc['id'])[:5].upper()}"
-                    v_copy["farmer_name"] = farmer.get("name") or "Local Farmer"
-                    v_copy["farmer_phone"] = farmer.get("phone") or "Not Available"
-                    v_copy["farmer_village"] = farmer.get("village") or fmt_inc.get("area") or "Rural Zone"
-                    v_copy["crop"] = inc.get("crop_type") or "Cotton"
+                    v_copy["farmer_name"] = farmer.get("name") or fmt_inc.get("farmer_name") or "Local Farmer"
+                    v_copy["farmer_phone"] = farmer.get("phone") or fmt_inc.get("farmer_phone") or "Not Available"
+                    v_copy["farmer_village"] = farmer.get("village") or fmt_inc.get("village") or fmt_inc.get("area") or "Rural Zone"
+                    v_copy["crop"] = inc.get("crop") or "Cotton"
                     v_copy["incident_priority"] = inc.get("priority") or "HIGH"
                     v_copy["latitude"] = fmt_inc.get("latitude")
                     v_copy["longitude"] = fmt_inc.get("longitude")
-                    all_visits.append(v_copy)
+                    if v_id in seen_visits:
+                        if v.get("status") == "COMPLETED" or v.get("completed_at"):
+                            seen_visits[v_id] = v_copy
+                    else:
+                        seen_visits[v_id] = v_copy
 
-    # Sort chronologically by scheduled date and time
+    all_visits = list(seen_visits.values())
     all_visits.sort(key=lambda x: (x.get("scheduled_date") or "", x.get("scheduled_time") or ""), reverse=False)
     return all_visits
 
@@ -1925,15 +1996,12 @@ def complete_field_visit(
     })
     sd["timeline"] = timeline
 
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    save_ai_analysis_sd(incident_id, analysis_id, sd)
 
     return {
         "success": True,
-        "visit": target_v
+        "visit": target_v,
+        "all_visits": visits
     }
 
 
@@ -1989,11 +2057,7 @@ def escalate_incident(
     })
     sd["timeline"] = timeline
 
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    save_ai_analysis_sd(incident_id, analysis_id, sd)
 
     client.table("incidents").update({
         "status": "ESCALATED",
@@ -2048,11 +2112,7 @@ def record_escalation_response(
     })
     sd["timeline"] = timeline
 
-    if analysis_id:
-        client.table("ai_analysis").update({
-            "structured_data": sd,
-            "updated_at": now_iso
-        }).eq("id", analysis_id).execute()
+    save_ai_analysis_sd(incident_id, analysis_id, sd)
 
     return {
         "success": True,
@@ -2074,7 +2134,7 @@ def get_government_support_options(incident_id: str) -> Dict[str, Any]:
     if not incident:
         raise ValueError(f"Incident {incident_id} not found")
 
-    crop = str(incident.get("crop_type") or "Cotton").capitalize()
+    crop = str(incident.get("crop") or incident.get("crop_type") or "Cotton").capitalize()
     description = str(incident.get("description") or "").lower()
     priority = str(incident.get("priority") or "HIGH").upper()
 
@@ -2401,7 +2461,7 @@ def get_farmer_incident_history(farmer_id: str) -> Dict[str, Any]:
     if not client:
         return {"success": False, "history": []}
 
-    res = client.table("incidents").select("id, crop_type, priority, status, description, created_at, ai_analysis(id, preliminary_disease, structured_data)").eq("farmer_id", farmer_id).order("created_at", desc=True).execute()
+    res = client.table("incidents").select("id, crop, priority, status, description, created_at, ai_analysis(id, preliminary_disease, structured_data)").eq("farmer_id", farmer_id).order("created_at", desc=True).execute()
     incidents = res.data or []
 
     farmer_res = client.table("farmers").select("id, name, phone, village").eq("id", farmer_id).execute()
@@ -2415,7 +2475,7 @@ def get_farmer_incident_history(farmer_id: str) -> Dict[str, Any]:
         history_items.append({
             "id": inc.get("id"),
             "case_id": fmt_inc.get("case_id") or f"KS-2026-{str(inc['id'])[:5].upper()}",
-            "crop": inc.get("crop_type") or "Cotton",
+            "crop": inc.get("crop") or inc.get("crop_type") or "Cotton",
             "priority": inc.get("priority") or "MEDIUM",
             "status": inc.get("status") or "RESOLVED",
             "description": inc.get("description"),

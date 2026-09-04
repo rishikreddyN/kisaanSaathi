@@ -179,6 +179,15 @@ export default function AeoDashboard() {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  // Re-fetch scheduled field visits whenever officer navigates to VISITS tab
+  useEffect(() => {
+    if (activeTab === 'VISITS') {
+      getScheduledFieldVisits().then((res) => {
+        if (res?.visits) setAllVisits(res.visits);
+      }).catch((err) => console.error('Failed to reload visits:', err));
+    }
+  }, [activeTab]);
+
   // Select incident and fetch full details
   const handleSelectIncident = async (inc) => {
     try {
@@ -502,8 +511,6 @@ export default function AeoDashboard() {
             { id: 'CASES', label: '📋 Complaints Queue', count: filteredIncidents.length },
             { id: 'MAP', label: '🗺️ Outbreak Clusters', count: clusters.length },
             { id: 'VISITS', label: '🚗 Scheduled Visits', count: allVisits.length },
-            { id: 'ANALYTICS', label: '📈 Area Analytics' },
-            { id: 'NOTIFICATIONS', label: '🔔 Alerts', count: notifications.length, alert: notifications.length > 0 },
           ].map((t) => (
             <button
               key={t.id}
@@ -1144,158 +1151,6 @@ export default function AeoDashboard() {
             )}
           </div>
         )}
-
-        {/* ============================================================== */}
-        {/* TAB 4: OPERATIONAL ANALYTICS                                   */}
-        {/* ============================================================== */}
-        {activeTab === 'ANALYTICS' && (
-          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>
-              📈 Operational Analytics &amp; Area Health
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <span className="stat-label">Resolution Efficiency Rate</span>
-                <div style={{ fontSize: '2rem', fontWeight: '800', color: '#15803d', marginTop: '4px' }}>
-                  {analyticsData?.kpis?.resolution_rate_percent || 78.4}%
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                  Cases closed or officially verified within 72 hours.
-                </p>
-              </div>
-
-              <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <span className="stat-label">Area Health Index</span>
-                <div style={{ fontSize: '2rem', fontWeight: '800', color: '#0284c7', marginTop: '4px' }}>
-                  {areaHealth} / 100
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                  Index factoring out pest cluster densities and unresolved severe attacks.
-                </p>
-              </div>
-
-              <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <span className="stat-label">Active Outbreak Clusters</span>
-                <div style={{ fontSize: '2rem', fontWeight: '800', color: '#7e22ce', marginTop: '4px' }}>
-                  {clusters.length}
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                  Pest &amp; disease clusters detected in 7.5km zones.
-                </p>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: '700', color: '#0f172a' }}>
-                Crop Distribution in Area
-              </h4>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {Object.entries(analyticsData?.crops_distribution || { Cotton: 18, Paddy: 12, Chilli: 6, Maize: 4 }).map(
-                  ([crop, count]) => (
-                    <div
-                      key={crop}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: '6px',
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #cbd5e1',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.875rem' }}>{crop}</span>
-                      <span
-                        style={{
-                          backgroundColor: '#15803d',
-                          color: '#ffffff',
-                          fontSize: '0.6875rem',
-                          fontWeight: '800',
-                          padding: '1px 6px',
-                          borderRadius: '8px',
-                        }}
-                      >
-                        {count}
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* TAB 5: ACTION ALERTS                                           */}
-        {/* ============================================================== */}
-        {activeTab === 'NOTIFICATIONS' && (
-          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>
-              🔔 Action-Oriented Field Alerts
-            </h3>
-
-            {notifications.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
-                ✓ No active urgent alerts in your area.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {notifications.map((n) => {
-                  const isUrgent = n.severity === 'CRITICAL' || n.severity === 'URGENT';
-                  return (
-                    <div
-                      key={n.id}
-                      style={{
-                        borderLeft: isUrgent ? '4px solid #dc2626' : '4px solid #15803d',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        padding: '14px 16px',
-                        backgroundColor: isUrgent ? '#fef2f2' : '#f8fafc',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '16px',
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: '700', fontSize: '0.9375rem', color: '#0f172a' }}>{n.title}</span>
-                          <span
-                            style={{
-                              fontSize: '0.6875rem',
-                              fontWeight: '800',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              backgroundColor: isUrgent ? '#fee2e2' : '#dcfce7',
-                              color: isUrgent ? '#dc2626' : '#15803d',
-                            }}
-                          >
-                            {n.severity}
-                          </span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#475569' }}>{n.message}</p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('CASES');
-                          const target = incidents.find((i) => i.id === n.link_id);
-                          if (target) handleSelectIncident(target);
-                        }}
-                        className="btn btn-outline"
-                        style={{ fontSize: '0.75rem', fontWeight: '700', padding: '6px 12px' }}
-                      >
-                        Inspect Case →
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </main>
 
       {/* FIELD VISIT MODAL */}
@@ -1306,7 +1161,10 @@ export default function AeoDashboard() {
         officerSession={officerSession}
         onVisitUpdated={() => {
           if (selectedIncident) handleSelectIncident(selectedIncident);
-          getScheduledFieldVisits().then((r) => r.visits && setAllVisits(r.visits));
+          getScheduledFieldVisits().then((r) => {
+            if (r?.visits) setAllVisits(r.visits);
+          });
+          loadDashboardData();
         }}
       />
 
